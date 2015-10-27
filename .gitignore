@@ -1,0 +1,6 @@
+target/
+*.log
+# Eclipse files:
+.classpath
+.project
+.settings/

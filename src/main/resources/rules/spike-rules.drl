@@ -1,0 +1,52 @@
+import fi.ima.drools_spike.dto.Address;
+import fi.ima.drools_spike.dto.Customer;
+import fi.ima.drools_spike.dto.DrivingLicense;
+import fi.ima.drools_spike.dto.Permission;
+
+import org.joda.time.DateTime;
+import org.joda.time.Years;
+
+dialect "mvel"
+
+/*
+
+Jos halutaan, että osuu vain kerran eli tulee vain yksi invalidreason, poista
+update( $customer );  kommenteista kaikissa säännöissä.
+
+*/
+
+rule "Asiakas on liian nuori"
+when
+	$customer : Customer( valid == true,
+						  age(dateOfBirth) < 18 )
+then
+	$customer.invalidate(drools.getRule().getName());
+	update( $customer ); 
+end
+
+rule "Asiakkaan maa on eri kuin ajokortin"
+when
+	$customer : Customer( valid == true )
+	DrivingLicense( customerId == $customer.customerId, country != $customer.address.country)
+then
+    System.out.println("Sääntö \"" + drools.getRule().getName() + "\" osui.");
+	$customer.invalidate(drools.getRule().getName());
+	update( $customer ); 
+end
+
+rule "Asiakkaalla ei ole ajokortin ajo-oikeusluokkaa"
+when
+	$customer : Customer( valid == true )
+	$license : DrivingLicense( customerId == $customer.customerId)
+	not Permission(  customer == $customer, 
+	                 permissionClass == $license.permissionClass, 
+	                 permissionCountry == $license.country )
+then
+    System.out.println("Sääntö \"" + drools.getRule().getName() + "\" osui.");
+	$customer.invalidate(drools.getRule().getName());
+	update( $customer ); 
+end
+
+function int age(java.util.Date dateOfBirth) {
+	return Years.yearsBetween(new DateTime(dateOfBirth.getTime()), new DateTime()).getYears();
+}
